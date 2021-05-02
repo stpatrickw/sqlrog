@@ -1,0 +1,199 @@
+name: cars
+columns:
+  id:
+    name: id
+    type: int(11)
+    notnull: true
+    charset: ""
+    collate: ""
+    usedefault: false
+    default: ""
+    key: PRI
+    extra: auto_increment
+    comment: ""
+    position: 1
+  id_category:
+    name: id_category
+    type: int(11)
+    notnull: true
+    charset: ""
+    collate: ""
+    usedefault: false
+    default: ""
+    key: MUL
+    extra: ""
+    comment: ""
+    position: 3
+  name:
+    name: name
+    type: varchar(45)
+    notnull: false
+    charset: latin1
+    collate: latin1_swedish_ci
+    usedefault: true
+    default: no name
+    key: MUL
+    extra: ""
+    comment: ""
+    position: 2
+  producer:
+    name: producer
+    type: varchar(45)
+    notnull: false
+    charset: latin1
+    collate: latin1_swedish_ci
+    usedefault: false
+    default: ""
+    key: ""
+    extra: ""
+    comment: ""
+    position: 7
+  serial:
+    name: serial
+    type: int(11)
+    notnull: true
+    charset: ""
+    collate: ""
+    usedefault: false
+    default: ""
+    key: UNI
+    extra: ""
+    comment: ""
+    position: 6
+  speed:
+    name: speed
+    type: int(11)
+    notnull: false
+    charset: ""
+    collate: ""
+    usedefault: false
+    default: ""
+    key: MUL
+    extra: ""
+    comment: describes speed
+    position: 4
+  weight:
+    name: weight
+    type: int(11)
+    notnull: false
+    charset: ""
+    collate: ""
+    usedefault: false
+    default: ""
+    key: ""
+    extra: ""
+    comment: ""
+    position: 5
+indexes:
+  FOREIGN KEY:
+    fk_cars1:
+      name: fk_cars1
+      type: FOREIGN KEY
+      algorithm: ""
+      unique: false
+      tablename: cars
+      fields:
+        id_category:
+          name: id_category
+          position: 1
+        serial:
+          name: serial
+          position: 2
+      sourcetable: categories
+      sourcefields:
+        id:
+          name: id
+          position: 1
+        serial:
+          name: serial
+          position: 2
+      ondelete: NO ACTION
+      onupdate: NO ACTION
+  INDEX:
+    fk_cars1_idx:
+      name: fk_cars1_idx
+      type: INDEX
+      algorithm: BTREE
+      unique: false
+      tablename: cars
+      fields:
+        id_category:
+          name: id_category
+          position: 1
+        serial:
+          name: serial
+          position: 2
+      sourcetable: ""
+      sourcefields: {}
+      ondelete: ""
+      onupdate: ""
+    idx_1:
+      name: idx_1
+      type: INDEX
+      algorithm: BTREE
+      unique: false
+      tablename: cars
+      fields:
+        name:
+          name: name
+          position: 1
+      sourcetable: ""
+      sourcefields: {}
+      ondelete: ""
+      onupdate: ""
+    idx_2:
+      name: idx_2
+      type: INDEX
+      algorithm: BTREE
+      unique: false
+      tablename: cars
+      fields:
+        speed:
+          name: speed
+          position: 1
+        weight:
+          name: weight
+          position: 2
+      sourcetable: ""
+      sourcefields: {}
+      ondelete: ""
+      onupdate: ""
+  PRIMARY KEY:
+    PRIMARY:
+      name: PRIMARY
+      type: PRIMARY KEY
+      algorithm: BTREE
+      unique: true
+      tablename: cars
+      fields:
+        id:
+          name: id
+          position: 1
+      sourcetable: ""
+      sourcefields: {}
+      ondelete: ""
+      onupdate: ""
+  UNIQUE:
+    serial_UNIQUE:
+      name: serial_UNIQUE
+      type: UNIQUE
+      algorithm: BTREE
+      unique: true
+      tablename: cars
+      fields:
+        serial:
+          name: serial
+          position: 1
+      sourcetable: ""
+      sourcefields: {}
+      ondelete: ""
+      onupdate: ""
+triggers:
+  cars_BEFORE_INSERT:
+    name: cars_BEFORE_INSERT
+    tablename: cars
+    typename: BEFORE INSERT
+    source: "BEGIN\n\tSET NEW.weight = 18;\nEND"
+charset: latin1
+collate: latin1_swedish_ci
+engine: InnoDB

@@ -1,0 +1,14 @@
+name: GetAllCarsByColor
+source: |-
+  BEGIN
+      select * from cars where color = @ColorName;
+   END
+input_params:
+  ColorName:
+    name: ColorName
+    typename: varchar(50)
+    charset: latin1
+    collate: latin1_swedish_ci
+    position: 1
+output_params: {}
+deterministic: false

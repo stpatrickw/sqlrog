@@ -1,0 +1,16 @@
+name: 1plus
+source: |-
+  BEGIN
+
+  RETURN 1 + @arg2;
+  END
+input_params:
+  arg2:
+    name: arg2
+    typename: int(11)
+    charset: ""
+    collate: ""
+    position: 1
+output_parameter_type: int(11)
+output_parameter_charset: ""
+deterministic: false

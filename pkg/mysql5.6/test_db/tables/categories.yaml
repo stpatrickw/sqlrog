@@ -1,0 +1,161 @@
+name: categories
+columns:
+  color:
+    name: color
+    type: varchar(45)
+    notnull: false
+    charset: latin1
+    collate: latin1_swedish_ci
+    usedefault: false
+    default: ""
+    key: ""
+    extra: ""
+    comment: ""
+    position: 3
+  colorname:
+    name: colorname
+    type: varchar(45)
+    notnull: true
+    charset: utf8
+    collate: utf8_unicode_ci
+    usedefault: false
+    default: ""
+    key: ""
+    extra: ""
+    comment: ""
+    position: 4
+  id:
+    name: id
+    type: int(11)
+    notnull: true
+    charset: ""
+    collate: ""
+    usedefault: false
+    default: ""
+    key: PRI
+    extra: auto_increment
+    comment: ""
+    position: 1
+  id_engine:
+    name: id_engine
+    type: int(11)
+    notnull: false
+    charset: ""
+    collate: ""
+    usedefault: false
+    default: ""
+    key: MUL
+    extra: ""
+    comment: ""
+    position: 5
+  id_producer:
+    name: id_producer
+    type: int(11)
+    notnull: false
+    charset: ""
+    collate: ""
+    usedefault: false
+    default: ""
+    key: MUL
+    extra: ""
+    comment: ""
+    position: 6
+  serial:
+    name: serial
+    type: int(11)
+    notnull: true
+    charset: ""
+    collate: ""
+    usedefault: false
+    default: ""
+    key: PRI
+    extra: ""
+    comment: ""
+    position: 2
+indexes:
+  FOREIGN KEY:
+    fk_categories1:
+      name: fk_categories1
+      type: FOREIGN KEY
+      algorithm: ""
+      unique: false
+      tablename: categories
+      fields:
+        id_engine:
+          name: id_engine
+          position: 1
+      sourcetable: engines
+      sourcefields:
+        id:
+          name: id
+          position: 1
+      ondelete: NO ACTION
+      onupdate: NO ACTION
+    fk_categories2:
+      name: fk_categories2
+      type: FOREIGN KEY
+      algorithm: ""
+      unique: false
+      tablename: categories
+      fields:
+        id_producer:
+          name: id_producer
+          position: 1
+      sourcetable: producers
+      sourcefields:
+        id:
+          name: id
+          position: 1
+      ondelete: CASCADE
+      onupdate: CASCADE
+  INDEX:
+    fk_categories1_idx:
+      name: fk_categories1_idx
+      type: INDEX
+      algorithm: BTREE
+      unique: false
+      tablename: categories
+      fields:
+        id_engine:
+          name: id_engine
+          position: 1
+      sourcetable: ""
+      sourcefields: {}
+      ondelete: ""
+      onupdate: ""
+    fk_categories2_idx:
+      name: fk_categories2_idx
+      type: INDEX
+      algorithm: BTREE
+      unique: false
+      tablename: categories
+      fields:
+        id_producer:
+          name: id_producer
+          position: 1
+      sourcetable: ""
+      sourcefields: {}
+      ondelete: ""
+      onupdate: ""
+  PRIMARY KEY:
+    PRIMARY:
+      name: PRIMARY
+      type: PRIMARY KEY
+      algorithm: BTREE
+      unique: true
+      tablename: categories
+      fields:
+        id:
+          name: id
+          position: 1
+        serial:
+          name: serial
+          position: 2
+      sourcetable: ""
+      sourcefields: {}
+      ondelete: ""
+      onupdate: ""
+triggers: {}
+charset: latin1
+collate: latin1_swedish_ci
+engine: InnoDB

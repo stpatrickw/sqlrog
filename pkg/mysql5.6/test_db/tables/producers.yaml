@@ -1,0 +1,46 @@
+name: producers
+columns:
+  id:
+    name: id
+    type: int(11)
+    notnull: true
+    charset: ""
+    collate: ""
+    usedefault: false
+    default: ""
+    key: PRI
+    extra: auto_increment
+    comment: ""
+    position: 1
+  name:
+    name: name
+    type: varchar(45)
+    notnull: false
+    charset: latin1
+    collate: latin1_swedish_ci
+    usedefault: false
+    default: ""
+    key: ""
+    extra: ""
+    comment: ""
+    position: 2
+indexes:
+  PRIMARY KEY:
+    PRIMARY:
+      name: PRIMARY
+      type: PRIMARY KEY
+      algorithm: BTREE
+      unique: true
+      tablename: producers
+      fields:
+        id:
+          name: id
+          position: 1
+      sourcetable: ""
+      sourcefields: {}
+      ondelete: ""
+      onupdate: ""
+triggers: {}
+charset: latin1
+collate: latin1_swedish_ci
+engine: InnoDB
