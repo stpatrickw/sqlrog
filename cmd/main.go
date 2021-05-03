@@ -2,18 +2,22 @@ package main
 
 import (
 	"github.com/spf13/cobra"
-	. "github.com/stpatrickw/sqlrog/common"
-	_ "github.com/stpatrickw/sqlrog/pkg/firebird2.5"
-	_ "github.com/stpatrickw/sqlrog/pkg/mysql5.6"
+	_ "github.com/stpatrickw/sqlrog/internal/firebird2.5"
+	_ "github.com/stpatrickw/sqlrog/internal/mysql5.6"
+	"github.com/stpatrickw/sqlrog/internal/sqlrog"
 	"log"
-	"time"
+	"os"
 )
 
 var CliCommands []*cobra.Command
 
 func main() {
-	start := time.Now()
-	if err := SchemerConfig.Load(DefaultConfigFileName); err != nil {
+	if _, err := os.Stat(sqlrog.DefaultConfigFileName); os.IsNotExist(err) {
+		if _, err = os.Create(sqlrog.DefaultConfigFileName); err != nil {
+			log.Fatal(err)
+		}
+	}
+	if err := sqlrog.AppConfig.Load(sqlrog.DefaultConfigFileName); err != nil {
 		log.Fatal(err)
 	}
 
@@ -25,5 +29,4 @@ func main() {
 	if err := rootCmd.Execute(); err != nil {
 		log.Fatal(err)
 	}
-	log.Printf("Execution time: %d sec", int32(time.Since(start).Seconds()))
 }

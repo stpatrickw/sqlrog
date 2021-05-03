@@ -4,7 +4,7 @@ import (
 	"bytes"
 	"database/sql"
 	"fmt"
-	. "github.com/stpatrickw/sqlrog/common"
+	"github.com/stpatrickw/sqlrog/internal/sqlrog"
 	"text/template"
 )
 
@@ -14,12 +14,12 @@ const (
 )
 
 type Procedure struct {
-	BaseElementSchema `yaml:"base,omitempty"`
-	Name              string                         `yaml:"name"`
-	Source            string                         `yaml:"source"`
-	InputParameters   map[string]*ProcedureParameter `yaml:"input_params"`
-	OutputParameters  map[string]*ProcedureParameter `yaml:"output_params"`
-	Deterministic     bool
+	sqlrog.BaseElementSchema `yaml:"base,omitempty"`
+	Name                     string                         `yaml:"name"`
+	Source                   string                         `yaml:"source"`
+	InputParameters          map[string]*ProcedureParameter `yaml:"input_params"`
+	OutputParameters         map[string]*ProcedureParameter `yaml:"output_params"`
+	Deterministic            bool
 }
 
 type ProcedureParameter struct {
@@ -93,12 +93,12 @@ func (p *Procedure) Equals(e2 interface{}) bool {
 	return true
 }
 
-func (p *Procedure) Diff(e2 interface{}) *DiffObject {
+func (p *Procedure) Diff(e2 interface{}) *sqlrog.DiffObject {
 	other := p.CastType(e2)
 
 	if !p.Equals(other) {
-		return &DiffObject{
-			State: DIFF_TYPE_UPDATE,
+		return &sqlrog.DiffObject{
+			State: sqlrog.DIFF_TYPE_UPDATE,
 			Type:  p.GetTypeName(),
 			From:  p,
 			To:    other,
@@ -138,8 +138,8 @@ func (p *Procedure) CastType(other interface{}) *Procedure {
 	return other.(*Procedure)
 }
 
-func (p *Procedure) FetchElementsFromDB(conn *sql.DB) ([]ElementSchema, error) {
-	var procedures []ElementSchema
+func (p *Procedure) FetchElementsFromDB(conn *sql.DB) ([]sqlrog.ElementSchema, error) {
+	var procedures []sqlrog.ElementSchema
 
 	rows, err := conn.Query(`SELECT SPECIFIC_NAME, ROUTINE_DEFINITION, IS_DETERMINISTIC 
 		FROM information_schema.routines WHERE routine_schema = schema() and routine_type = 'PROCEDURE' order by 1`)

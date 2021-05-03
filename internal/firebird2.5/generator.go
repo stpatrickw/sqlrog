@@ -3,7 +3,7 @@ package fb
 import (
 	"database/sql"
 	"fmt"
-	. "github.com/stpatrickw/sqlrog/common"
+	"github.com/stpatrickw/sqlrog/internal/sqlrog"
 )
 
 const (
@@ -12,9 +12,9 @@ const (
 )
 
 type Generator struct {
-	BaseElementSchema `yaml:"base,omitempty"`
-	Name              string `yaml:"name"`
-	Comment           string `yaml:"comment"`
+	sqlrog.BaseElementSchema `yaml:"base,omitempty"`
+	Name                     string `yaml:"name"`
+	Comment                  string `yaml:"comment"`
 }
 
 func (g *Generator) GetName() string {
@@ -71,12 +71,12 @@ func (g *Generator) Equals(g2 interface{}) bool {
 	return g.Name == other.Name && g.Comment == other.Comment
 }
 
-func (g *Generator) Diff(e2 interface{}) *DiffObject {
+func (g *Generator) Diff(e2 interface{}) *sqlrog.DiffObject {
 	other := g.CastType(e2)
 
 	if !g.Equals(other) {
-		return &DiffObject{
-			State: DIFF_TYPE_UPDATE,
+		return &sqlrog.DiffObject{
+			State: sqlrog.DIFF_TYPE_UPDATE,
 			Type:  g.GetTypeName(),
 			From:  g,
 			To:    other,
@@ -90,8 +90,8 @@ func (g *Generator) CastType(other interface{}) *Generator {
 	return other.(*Generator)
 }
 
-func (g *Generator) FetchElementsFromDB(conn *sql.DB) ([]ElementSchema, error) {
-	var generators []ElementSchema
+func (g *Generator) FetchElementsFromDB(conn *sql.DB) ([]sqlrog.ElementSchema, error) {
+	var generators []sqlrog.ElementSchema
 
 	rows, err := conn.Query(`
 		select trim(rdb$generator_name), trim(coalesce(rdb$description, ''))
@@ -114,10 +114,10 @@ func (g *Generator) FetchElementsFromDB(conn *sql.DB) ([]ElementSchema, error) {
 	return generators, nil
 }
 
-func (g *Generator) DiffsOnCreate(schema ElementSchema) []*DiffObject {
+func (g *Generator) DiffsOnCreate(schema sqlrog.ElementSchema) []*sqlrog.DiffObject {
 	return g.BaseElementSchema.DiffsOnCreate(schema)
 }
 
-func (g *Generator) DiffsOnDrop(schema ElementSchema) []*DiffObject {
+func (g *Generator) DiffsOnDrop(schema sqlrog.ElementSchema) []*sqlrog.DiffObject {
 	return g.BaseElementSchema.DiffsOnDrop(schema)
 }

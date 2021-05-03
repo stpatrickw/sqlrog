@@ -1,10 +1,10 @@
-package mysql
+package fb
 
 import (
 	"bytes"
 	"database/sql"
 	"fmt"
-	. "github.com/stpatrickw/sqlrog/common"
+	"github.com/stpatrickw/sqlrog/internal/sqlrog"
 	"text/template"
 )
 
@@ -14,9 +14,9 @@ const (
 )
 
 type View struct {
-	BaseElementSchema `yaml:"base,omitempty"`
-	Name              string `yaml:"name"`
-	Source            string `yaml:"source"`
+	sqlrog.BaseElementSchema `yaml:"base,omitempty"`
+	Name                     string `yaml:"name"`
+	Source                   string `yaml:"source"`
 }
 
 func (v *View) GetName() string {
@@ -32,11 +32,11 @@ func (v *View) GetPluralTypeName() string {
 }
 
 func (v *View) AlterDefinition(other interface{}, sep string) []string {
-	return []string{v.Definition(sep)}
+	return []string{fmt.Sprintf("ALTER %s", v.CastType(other).Definition(sep))}
 }
 
 func (v *View) CreateDefinition(sep string) []string {
-	return []string{v.Definition(sep)}
+	return []string{fmt.Sprintf("CREATE %s", v.Definition(sep))}
 }
 
 func (v *View) DropDefinition(sep string) []string {
@@ -44,7 +44,7 @@ func (v *View) DropDefinition(sep string) []string {
 }
 
 func (v *View) Definition(sep string) string {
-	procTmpl, err := template.New("view").Parse(`CREATE OR REPLACE VIEW {{ .Name}} 
+	procTmpl, err := template.New("view").Parse(`VIEW {{ .Name}} 
 as {{ .Source }}`)
 
 	if err != nil {
@@ -70,12 +70,12 @@ func (p *View) Equals(e2 interface{}) bool {
 	return true
 }
 
-func (v *View) Diff(e2 interface{}) *DiffObject {
+func (v *View) Diff(e2 interface{}) *sqlrog.DiffObject {
 	other := v.CastType(e2)
 
 	if !v.Equals(other) {
-		return &DiffObject{
-			State: DIFF_TYPE_UPDATE,
+		return &sqlrog.DiffObject{
+			State: sqlrog.DIFF_TYPE_UPDATE,
 			Type:  v.GetTypeName(),
 			From:  v,
 			To:    other,
@@ -89,13 +89,14 @@ func (v *View) CastType(other interface{}) *View {
 	return other.(*View)
 }
 
-func (v *View) FetchElementsFromDB(conn *sql.DB) ([]ElementSchema, error) {
-	var views []ElementSchema
+func (v *View) FetchElementsFromDB(conn *sql.DB) ([]sqlrog.ElementSchema, error) {
+	var views []sqlrog.ElementSchema
 
 	rows, err := conn.Query(`
-		SELECT TABLE_NAME, VIEW_DEFINITION 
-		from INFORMATION_SCHEMA.VIEWS 
-		where TABLE_SCHEMA = schema() 
+		select trim(rdb$relation_name), trim(rdb$view_source)
+			from rdb$relations
+			where rdb$view_blr is not null
+			and (rdb$system_flag is null or rdb$system_flag = 0)
 		order by 1`)
 	if err != nil {
 		return views, err
@@ -111,4 +112,12 @@ func (v *View) FetchElementsFromDB(conn *sql.DB) ([]ElementSchema, error) {
 	}
 
 	return views, nil
+}
+
+func (v *View) DiffsOnCreate(schema sqlrog.ElementSchema) []*sqlrog.DiffObject {
+	return v.BaseElementSchema.DiffsOnCreate(schema)
+}
+
+func (v *View) DiffsOnDrop(schema sqlrog.ElementSchema) []*sqlrog.DiffObject {
+	return v.BaseElementSchema.DiffsOnDrop(schema)
 }

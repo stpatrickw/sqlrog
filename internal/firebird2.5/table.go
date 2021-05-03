@@ -4,7 +4,7 @@ import (
 	"bytes"
 	"database/sql"
 	"fmt"
-	. "github.com/stpatrickw/sqlrog/common"
+	"github.com/stpatrickw/sqlrog/internal/sqlrog"
 	"text/template"
 )
 
@@ -15,11 +15,11 @@ const (
 )
 
 type Table struct {
-	BaseElementSchema `yaml:"base,omitempty"`
-	Name              string                       `yaml:"name"`
-	Fields            map[string]*TableColumn      `yaml:"columns"`
-	Indexes           map[string]map[string]*Index `yaml:"indexes"`
-	Triggers          map[string]*Trigger          `yaml:"triggers"`
+	sqlrog.BaseElementSchema `yaml:"base,omitempty"`
+	Name                     string                       `yaml:"name"`
+	Fields                   map[string]*TableColumn      `yaml:"columns"`
+	Indexes                  map[string]map[string]*Index `yaml:"indexes"`
+	Triggers                 map[string]*Trigger          `yaml:"triggers"`
 }
 
 func (t *Table) GetName() string {
@@ -38,8 +38,8 @@ func (t *Table) AlterDefinition(t2 interface{}, sep string) []string {
 	var definitions []string
 	other := t.CastType(t2)
 	fb := &FirebirdEngine{}
-	var diffs []*DiffObject
-	var columnDiffs []*DiffObject
+	var diffs []*sqlrog.DiffObject
+	var columnDiffs []*sqlrog.DiffObject
 	if !fb.Equals(t.Fields, other.Fields) {
 		columnDiffs = append(diffs, fb.CompareScheme(t.Fields, other.Fields)...)
 	}
@@ -91,10 +91,10 @@ func (t *Table) Definition() string {
 	return tpl.String()
 }
 
-func (t *Table) DiffColumnDefinition(diff *DiffObject, sep string) []string {
+func (t *Table) DiffColumnDefinition(diff *sqlrog.DiffObject, sep string) []string {
 	var definitions []string
 	switch diff.State {
-	case DIFF_TYPE_CREATE:
+	case sqlrog.DIFF_TYPE_CREATE:
 		column := diff.To.(*TableColumn)
 		definition := fmt.Sprintf("ALTER TABLE %s ADD %s", t.Name, column.Name)
 		if column.Domain != "" {
@@ -118,10 +118,10 @@ func (t *Table) DiffColumnDefinition(diff *DiffObject, sep string) []string {
 		if column.Comment != "" {
 			definitions = append(definitions, t.CommentOnColumn(column, sep))
 		}
-	case DIFF_TYPE_DROP:
+	case sqlrog.DIFF_TYPE_DROP:
 		column := diff.From.(*TableColumn)
 		definitions = append(definitions, fmt.Sprintf("ALTER TABLE %s DROP %s%s\n", t.Name, column.Name, sep))
-	case DIFF_TYPE_UPDATE:
+	case sqlrog.DIFF_TYPE_UPDATE:
 		columnFrom := diff.To.(*TableColumn)
 		columnTo := diff.From.(*TableColumn)
 		if columnTo.NotNull != columnFrom.NotNull {
@@ -182,12 +182,12 @@ func (t *Table) Equals(t2 interface{}) bool {
 	return true
 }
 
-func (t *Table) Diff(t2 interface{}) *DiffObject {
+func (t *Table) Diff(t2 interface{}) *sqlrog.DiffObject {
 	other := t.CastType(t2)
 
 	if !t.Equals(other) {
-		return &DiffObject{
-			State:    DIFF_TYPE_UPDATE,
+		return &sqlrog.DiffObject{
+			State:    sqlrog.DIFF_TYPE_UPDATE,
 			Type:     t.GetTypeName(),
 			From:     t,
 			To:       other,
@@ -198,10 +198,10 @@ func (t *Table) Diff(t2 interface{}) *DiffObject {
 	return nil
 }
 
-func (t *Table) DiffsOnCreate(schema ElementSchema) []*DiffObject {
-	var diffs []*DiffObject
-	diffs = append(diffs, &DiffObject{
-		State:    DIFF_TYPE_CREATE,
+func (t *Table) DiffsOnCreate(schema sqlrog.ElementSchema) []*sqlrog.DiffObject {
+	var diffs []*sqlrog.DiffObject
+	diffs = append(diffs, &sqlrog.DiffObject{
+		State:    sqlrog.DIFF_TYPE_CREATE,
 		Type:     t.GetTypeName(),
 		From:     nil,
 		To:       t,
@@ -217,7 +217,7 @@ func (t *Table) DiffsOnCreate(schema ElementSchema) []*DiffObject {
 	return diffs
 }
 
-func (t *Table) DiffsOnDrop(schema ElementSchema) []*DiffObject {
+func (t *Table) DiffsOnDrop(schema sqlrog.ElementSchema) []*sqlrog.DiffObject {
 	return t.BaseElementSchema.DiffsOnDrop(schema)
 }
 
@@ -225,7 +225,7 @@ func (t *Table) CastType(other interface{}) *Table {
 	return other.(*Table)
 }
 
-func (t *Table) FetchElementsFromDB(conn *sql.DB) ([]ElementSchema, error) {
+func (t *Table) FetchElementsFromDB(conn *sql.DB) ([]sqlrog.ElementSchema, error) {
 	tablesMap := make(map[string]*Table)
 	rows, err := conn.Query(`
 		select trim(rdb$relation_name) 
@@ -278,7 +278,7 @@ func (t *Table) FetchElementsFromDB(conn *sql.DB) ([]ElementSchema, error) {
 		}
 		tablesMap[tableName].Indexes = indexesByTable
 	}
-	var tables []ElementSchema
+	var tables []sqlrog.ElementSchema
 	for _, table := range tablesMap {
 		tables = append(tables, table)
 	}

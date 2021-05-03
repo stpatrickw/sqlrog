@@ -5,24 +5,24 @@ import (
 	"fmt"
 	_ "github.com/go-sql-driver/mysql"
 	"github.com/pkg/errors"
-	. "github.com/stpatrickw/sqlrog/common"
+	"github.com/stpatrickw/sqlrog/internal/sqlrog"
 	"os"
 	"reflect"
 	"sort"
 )
 
 type MysqlEngine struct {
-	CoreEngine
+	sqlrog.CoreEngine
 }
 
 func init() {
 	mysql := &MysqlEngine{
-		CoreEngine{
+		sqlrog.CoreEngine{
 			Name:  "MySql",
 			Alias: "mysql5.6",
 		},
 	}
-	Engines[mysql.Alias] = mysql
+	sqlrog.Engines[mysql.Alias] = mysql
 }
 
 type MysqlParams struct {
@@ -62,15 +62,15 @@ func (my *MysqlEngine) CreateParams() interface{} {
 	return &MysqlParams{}
 }
 
-func (my *MysqlEngine) LoadSchema(config *Config, reader ObjectReader) (ElementSchema, error) {
+func (my *MysqlEngine) LoadSchema(config *sqlrog.Config, reader sqlrog.ObjectReader) (sqlrog.ElementSchema, error) {
 	schema := &MysqlSchema{
-		BaseElementSchema{
-			CoreElements: make(map[string]map[string]ElementSchema),
+		sqlrog.BaseElementSchema{
+			CoreElements: make(map[string]map[string]sqlrog.ElementSchema),
 		},
 	}
 
-	var schemaElements []ElementSchema
-	if config.AppType == AppTypeProject {
+	var schemaElements []sqlrog.ElementSchema
+	if config.AppType == sqlrog.AppTypeProject {
 		if _, err := os.Stat("./" + config.AppName); os.IsNotExist(err) {
 			return nil, errors.New(fmt.Sprintf("Folder for Project: %s doesn't exist", config.AppName))
 		}
@@ -105,7 +105,7 @@ func (my *MysqlEngine) LoadSchema(config *Config, reader ObjectReader) (ElementS
 	return schema, nil
 }
 
-func (my *MysqlEngine) ExecuteSQL(config *Config, sqls []string) error {
+func (my *MysqlEngine) ExecuteSQL(config *sqlrog.Config, sqls []string) error {
 	conn, err := my.OpenConnection(config.Params.(*MysqlParams))
 	if err != nil {
 		return err
@@ -134,8 +134,8 @@ func (fb *MysqlEngine) CloseConnection(conn *sql.DB) {
 	conn.Close()
 }
 
-func (my *MysqlEngine) SchemaDiff(source interface{}, target interface{}) []*DiffObject {
-	var changes []*DiffObject
+func (my *MysqlEngine) SchemaDiff(source interface{}, target interface{}) []*sqlrog.DiffObject {
+	var changes []*sqlrog.DiffObject
 	sourceSchema := source.(*MysqlSchema)
 	targetSchema := target.(*MysqlSchema)
 
@@ -150,11 +150,11 @@ func (my *MysqlEngine) SchemaDiff(source interface{}, target interface{}) []*Dif
 }
 
 type MysqlSchema struct {
-	BaseElementSchema
+	sqlrog.BaseElementSchema
 }
 
-func (mys *MysqlSchema) GetChilds() []ElementSchema {
-	var childs []ElementSchema
+func (mys *MysqlSchema) GetChilds() []sqlrog.ElementSchema {
+	var childs []sqlrog.ElementSchema
 	for _, childsByType := range mys.CoreElements {
 		for _, child := range childsByType {
 			childs = append(childs, child)
@@ -163,21 +163,21 @@ func (mys *MysqlSchema) GetChilds() []ElementSchema {
 	return childs
 }
 
-func (mys *MysqlSchema) GetGlobalChildElements() []ElementSchema {
-	return []ElementSchema{&Table{}, &View{}, &Function{}, &Procedure{}}
+func (mys *MysqlSchema) GetGlobalChildElements() []sqlrog.ElementSchema {
+	return []sqlrog.ElementSchema{&Table{}, &View{}, &Function{}, &Procedure{}}
 }
 
-func (mys *MysqlSchema) AddChild(child ElementSchema) error {
+func (mys *MysqlSchema) AddChild(child sqlrog.ElementSchema) error {
 	childType := child.GetTypeName()
 	if ok := mys.CoreElements[childType]; ok == nil {
-		mys.CoreElements[childType] = make(map[string]ElementSchema)
+		mys.CoreElements[childType] = make(map[string]sqlrog.ElementSchema)
 	}
 	mys.CoreElements[childType][child.GetName()] = child
 	return nil
 }
 
-func (mys *MysqlSchema) FetchElementsFromDB(conn *sql.DB) ([]ElementSchema, error) {
-	var elements []ElementSchema
+func (mys *MysqlSchema) FetchElementsFromDB(conn *sql.DB) ([]sqlrog.ElementSchema, error) {
+	var elements []sqlrog.ElementSchema
 	for _, el := range mys.GetGlobalChildElements() {
 		fetchedElements, err := el.FetchElementsFromDB(conn)
 		if err != nil {

@@ -5,23 +5,23 @@ import (
 	"fmt"
 	_ "github.com/nakagami/firebirdsql"
 	"github.com/pkg/errors"
-	. "github.com/stpatrickw/sqlrog/common"
+	"github.com/stpatrickw/sqlrog/internal/sqlrog"
 	"os"
 	"reflect"
 )
 
 type FirebirdEngine struct {
-	CoreEngine
+	sqlrog.CoreEngine
 }
 
 func init() {
 	fb := &FirebirdEngine{
-		CoreEngine{
+		sqlrog.CoreEngine{
 			Name:  "Firebird",
 			Alias: "fb2.5",
 		},
 	}
-	Engines[fb.Alias] = fb
+	sqlrog.Engines[fb.Alias] = fb
 }
 
 type FbParams struct {
@@ -61,15 +61,15 @@ func (fb *FirebirdEngine) CreateParams() interface{} {
 	return &FbParams{}
 }
 
-func (fb *FirebirdEngine) LoadSchema(config *Config, reader ObjectReader) (ElementSchema, error) {
+func (fb *FirebirdEngine) LoadSchema(config *sqlrog.Config, reader sqlrog.ObjectReader) (sqlrog.ElementSchema, error) {
 	schema := &FbSchema{
-		BaseElementSchema{
-			CoreElements: make(map[string]map[string]ElementSchema),
+		sqlrog.BaseElementSchema{
+			CoreElements: make(map[string]map[string]sqlrog.ElementSchema),
 		},
 	}
 
-	var schemaElements []ElementSchema
-	if config.AppType == AppTypeProject {
+	var schemaElements []sqlrog.ElementSchema
+	if config.AppType == sqlrog.AppTypeProject {
 		if _, err := os.Stat("./" + config.AppName); os.IsNotExist(err) {
 			return nil, errors.New(fmt.Sprintf("Folder for Project: %s doesn't exist", config.AppName))
 		}
@@ -105,11 +105,11 @@ func (fb *FirebirdEngine) LoadSchema(config *Config, reader ObjectReader) (Eleme
 }
 
 type FbSchema struct {
-	BaseElementSchema
+	sqlrog.BaseElementSchema
 }
 
-func (fbs *FbSchema) GetChilds() []ElementSchema {
-	var childs []ElementSchema
+func (fbs *FbSchema) GetChilds() []sqlrog.ElementSchema {
+	var childs []sqlrog.ElementSchema
 	for _, childsByType := range fbs.CoreElements {
 		for _, child := range childsByType {
 			childs = append(childs, child)
@@ -118,11 +118,11 @@ func (fbs *FbSchema) GetChilds() []ElementSchema {
 	return childs
 }
 
-func (fbs *FbSchema) GetGlobalChildElements() []ElementSchema {
-	return []ElementSchema{&Domain{}, &Exception{}, &Generator{}, &Role{}, &Procedure{}, &View{}, &Table{}}
+func (fbs *FbSchema) GetGlobalChildElements() []sqlrog.ElementSchema {
+	return []sqlrog.ElementSchema{&Domain{}, &Exception{}, &Generator{}, &Role{}, &Procedure{}, &View{}, &Table{}}
 }
 
-func (fb *FirebirdEngine) ExecuteSQL(config *Config, sqls []string) error {
+func (fb *FirebirdEngine) ExecuteSQL(config *sqlrog.Config, sqls []string) error {
 	conn, err := fb.OpenConnection(config.Params.(*FbParams))
 	if err != nil {
 		return err
@@ -137,17 +137,17 @@ func (fb *FirebirdEngine) ExecuteSQL(config *Config, sqls []string) error {
 	return nil
 }
 
-func (fbs *FbSchema) AddChild(child ElementSchema) error {
+func (fbs *FbSchema) AddChild(child sqlrog.ElementSchema) error {
 	childType := child.GetTypeName()
 	if ok := fbs.CoreElements[childType]; ok == nil {
-		fbs.CoreElements[childType] = make(map[string]ElementSchema)
+		fbs.CoreElements[childType] = make(map[string]sqlrog.ElementSchema)
 	}
 	fbs.CoreElements[childType][child.GetName()] = child
 	return nil
 }
 
-func (fbs *FbSchema) FetchElementsFromDB(conn *sql.DB) ([]ElementSchema, error) {
-	var elements []ElementSchema
+func (fbs *FbSchema) FetchElementsFromDB(conn *sql.DB) ([]sqlrog.ElementSchema, error) {
+	var elements []sqlrog.ElementSchema
 	for _, el := range fbs.GetGlobalChildElements() {
 		fetchedElements, err := el.FetchElementsFromDB(conn)
 		if err != nil {
@@ -176,8 +176,8 @@ func (fb *FirebirdEngine) CloseConnection(conn *sql.DB) {
 	conn.Close()
 }
 
-func (e *FirebirdEngine) SchemaDiff(source interface{}, target interface{}) []*DiffObject {
-	var changes []*DiffObject
+func (e *FirebirdEngine) SchemaDiff(source interface{}, target interface{}) []*sqlrog.DiffObject {
+	var changes []*sqlrog.DiffObject
 	sourceSchema := source.(*FbSchema)
 	targetSchema := target.(*FbSchema)
 

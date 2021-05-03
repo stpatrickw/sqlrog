@@ -4,18 +4,18 @@ import (
 	"bytes"
 	"database/sql"
 	"fmt"
-	. "github.com/stpatrickw/sqlrog/common"
+	"github.com/stpatrickw/sqlrog/internal/sqlrog"
 	"text/template"
 )
 
 type Trigger struct {
-	BaseElementSchema `yaml:"base,omitempty"`
-	Name              string
-	TableName         string
-	TypeName          string
-	Position          int
-	Source            string
-	Active            bool
+	sqlrog.BaseElementSchema `yaml:"base,omitempty"`
+	Name                     string
+	TableName                string
+	TypeName                 string
+	Position                 int
+	Source                   string
+	Active                   bool
 }
 
 func (t *Trigger) GetTypeName() string {
@@ -60,12 +60,12 @@ func (t *Trigger) Equals(e2 interface{}) bool {
 		t.Position == other.Position && t.Source == other.Source && t.Active == other.Active
 }
 
-func (t *Trigger) Diff(t2 interface{}) *DiffObject {
+func (t *Trigger) Diff(t2 interface{}) *sqlrog.DiffObject {
 	other := t.CastType(t2)
 
 	if !t.Equals(other) {
-		return &DiffObject{
-			State: DIFF_TYPE_UPDATE,
+		return &sqlrog.DiffObject{
+			State: sqlrog.DIFF_TYPE_UPDATE,
 			Type:  t.GetTypeName(),
 			From:  t,
 			To:    other,
@@ -128,10 +128,10 @@ func (t *Trigger) FetchTriggersFromDB(conn *sql.DB) (map[string]map[string]*Trig
 	return triggers, nil
 }
 
-func (t *Trigger) DiffsOnCreate(schema ElementSchema) []*DiffObject {
+func (t *Trigger) DiffsOnCreate(schema sqlrog.ElementSchema) []*sqlrog.DiffObject {
 	return t.BaseElementSchema.DiffsOnCreate(schema)
 }
 
-func (t *Trigger) DiffsOnDrop(schema ElementSchema) []*DiffObject {
+func (t *Trigger) DiffsOnDrop(schema sqlrog.ElementSchema) []*sqlrog.DiffObject {
 	return t.BaseElementSchema.DiffsOnDrop(schema)
 }

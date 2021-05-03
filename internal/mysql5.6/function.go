@@ -4,7 +4,7 @@ import (
 	"bytes"
 	"database/sql"
 	"fmt"
-	. "github.com/stpatrickw/sqlrog/common"
+	"github.com/stpatrickw/sqlrog/internal/sqlrog"
 	"text/template"
 )
 
@@ -14,13 +14,13 @@ const (
 )
 
 type Function struct {
-	BaseElementSchema      `yaml:"base,omitempty"`
-	Name                   string                        `yaml:"name"`
-	Source                 string                        `yaml:"source"`
-	InputParameters        map[string]*FunctionParameter `yaml:"input_params"`
-	OutputParameterType    string                        `yaml:"output_parameter_type"`
-	OutputParameterCharset string                        `yaml:"output_parameter_charset"`
-	Deterministic          bool
+	sqlrog.BaseElementSchema `yaml:"base,omitempty"`
+	Name                     string                        `yaml:"name"`
+	Source                   string                        `yaml:"source"`
+	InputParameters          map[string]*FunctionParameter `yaml:"input_params"`
+	OutputParameterType      string                        `yaml:"output_parameter_type"`
+	OutputParameterCharset   string                        `yaml:"output_parameter_charset"`
+	Deterministic            bool
 }
 
 type FunctionParameter struct {
@@ -89,12 +89,12 @@ func (f *Function) Equals(e2 interface{}) bool {
 	return true
 }
 
-func (f *Function) Diff(e2 interface{}) *DiffObject {
+func (f *Function) Diff(e2 interface{}) *sqlrog.DiffObject {
 	other := f.CastType(e2)
 
 	if !f.Equals(other) {
-		return &DiffObject{
-			State: DIFF_TYPE_UPDATE,
+		return &sqlrog.DiffObject{
+			State: sqlrog.DIFF_TYPE_UPDATE,
 			Type:  f.GetTypeName(),
 			From:  f,
 			To:    other,
@@ -133,8 +133,8 @@ func (f *Function) CastType(other interface{}) *Function {
 	return other.(*Function)
 }
 
-func (f *Function) FetchElementsFromDB(conn *sql.DB) ([]ElementSchema, error) {
-	var functions []ElementSchema
+func (f *Function) FetchElementsFromDB(conn *sql.DB) ([]sqlrog.ElementSchema, error) {
+	var functions []sqlrog.ElementSchema
 
 	rows, err := conn.Query(`SELECT r.SPECIFIC_NAME, r.ROUTINE_DEFINITION, p.DTD_IDENTIFIER, coalesce(p.CHARACTER_SET_NAME,''), r.IS_DETERMINISTIC
 		FROM information_schema.routines r

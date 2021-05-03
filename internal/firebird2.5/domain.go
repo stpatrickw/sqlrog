@@ -3,7 +3,7 @@ package fb
 import (
 	"database/sql"
 	"fmt"
-	. "github.com/stpatrickw/sqlrog/common"
+	"github.com/stpatrickw/sqlrog/internal/sqlrog"
 )
 
 const (
@@ -12,12 +12,12 @@ const (
 )
 
 type Domain struct {
-	BaseElementSchema `yaml:"base,omitempty"`
-	Name              string `yaml:"name"`
-	Type              string `yaml:"type"`
-	Default           string `yaml:"default"`
-	Notnull           bool   `yaml:"notnull"`
-	Comment           string `yaml:"comment"`
+	sqlrog.BaseElementSchema `yaml:"base,omitempty"`
+	Name                     string `yaml:"name"`
+	Type                     string `yaml:"type"`
+	Default                  string `yaml:"default"`
+	Notnull                  bool   `yaml:"notnull"`
+	Comment                  string `yaml:"comment"`
 }
 
 func (d *Domain) GetName() string {
@@ -65,11 +65,11 @@ func (d *Domain) Definition(sep string) string {
 	return SQL
 }
 
-func (d *Domain) DiffsOnCreate(schema ElementSchema) []*DiffObject {
+func (d *Domain) DiffsOnCreate(schema sqlrog.ElementSchema) []*sqlrog.DiffObject {
 	return d.BaseElementSchema.DiffsOnCreate(schema)
 }
 
-func (d *Domain) DiffsOnDrop(schema ElementSchema) []*DiffObject {
+func (d *Domain) DiffsOnDrop(schema sqlrog.ElementSchema) []*sqlrog.DiffObject {
 	return d.BaseElementSchema.DiffsOnDrop(schema)
 }
 
@@ -87,12 +87,12 @@ func (d *Domain) Equals(d2 interface{}) bool {
 		d.Default == other.Default && d.Comment == other.Comment
 }
 
-func (d *Domain) Diff(d2 interface{}) *DiffObject {
+func (d *Domain) Diff(d2 interface{}) *sqlrog.DiffObject {
 	other := d.CastType(d2)
 
 	if !d.Equals(other) {
-		return &DiffObject{
-			State: DIFF_TYPE_UPDATE,
+		return &sqlrog.DiffObject{
+			State: sqlrog.DIFF_TYPE_UPDATE,
 			Type:  d.GetTypeName(),
 			From:  d,
 			To:    other,
@@ -106,8 +106,8 @@ func (d *Domain) CastType(other interface{}) *Domain {
 	return other.(*Domain)
 }
 
-func (d *Domain) FetchElementsFromDB(conn *sql.DB) ([]ElementSchema, error) {
-	var domains []ElementSchema
+func (d *Domain) FetchElementsFromDB(conn *sql.DB) ([]sqlrog.ElementSchema, error) {
+	var domains []sqlrog.ElementSchema
 
 	rows, err := conn.Query(`
 		select

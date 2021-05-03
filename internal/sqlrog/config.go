@@ -1,4 +1,4 @@
-package common
+package sqlrog
 
 import (
 	"errors"
@@ -13,11 +13,11 @@ const DefaultConfigFileName = "config.yml"
 const AppTypeProject = "project"
 
 var Engines map[string]Engine
-var SchemerConfig *AppsConfig
+var AppConfig *AppsConfig
 
 func init() {
 	Engines = make(map[string]Engine)
-	SchemerConfig = &AppsConfig{
+	AppConfig = &AppsConfig{
 		Apps: make(map[string]*Config),
 	}
 }
@@ -77,11 +77,11 @@ func (sc *AppsConfig) Load(fileName string) error {
 	if err != nil {
 		return err
 	}
-	err = yaml.Unmarshal(data, &SchemerConfig)
+	err = yaml.Unmarshal(data, &AppConfig)
 	if err != nil {
 		return err
 	}
-	for _, app := range SchemerConfig.Apps {
+	for _, app := range AppConfig.Apps {
 		var params Params
 		if app.AppType == "project" {
 			params = &ConfigParams{}
@@ -102,7 +102,7 @@ func (sc *AppsConfig) Load(fileName string) error {
 }
 
 func (sc *AppsConfig) Save(fileName string) error {
-	d, err := yaml.Marshal(&SchemerConfig)
+	d, err := yaml.Marshal(&AppConfig)
 	if err != nil {
 		return err
 	}

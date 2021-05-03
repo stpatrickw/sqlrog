@@ -3,7 +3,7 @@ package fb
 import (
 	"database/sql"
 	"fmt"
-	. "github.com/stpatrickw/sqlrog/common"
+	"github.com/stpatrickw/sqlrog/internal/sqlrog"
 )
 
 const (
@@ -12,11 +12,11 @@ const (
 )
 
 type Exception struct {
-	BaseElementSchema `yaml:"base,omitempty"`
-	Name              string `yaml:"name"`
-	Number            int    `yaml:"number"`
-	Message           string `yaml:"message"`
-	Comment           string `yaml:"comment"`
+	sqlrog.BaseElementSchema `yaml:"base,omitempty"`
+	Name                     string `yaml:"name"`
+	Number                   int    `yaml:"number"`
+	Message                  string `yaml:"message"`
+	Comment                  string `yaml:"comment"`
 }
 
 func (e *Exception) GetName() string {
@@ -68,12 +68,12 @@ func (e *Exception) Equals(e2 interface{}) bool {
 	return e.Name == other.Name && e.Comment == other.Comment && e.Message == other.Message
 }
 
-func (e *Exception) Diff(e2 interface{}) *DiffObject {
+func (e *Exception) Diff(e2 interface{}) *sqlrog.DiffObject {
 	other := e.CastType(e2)
 
 	if !e.Equals(other) {
-		return &DiffObject{
-			State: DIFF_TYPE_UPDATE,
+		return &sqlrog.DiffObject{
+			State: sqlrog.DIFF_TYPE_UPDATE,
 			Type:  e.GetTypeName(),
 			From:  e,
 			To:    other,
@@ -87,8 +87,8 @@ func (e *Exception) CastType(other interface{}) *Exception {
 	return other.(*Exception)
 }
 
-func (e *Exception) FetchElementsFromDB(conn *sql.DB) ([]ElementSchema, error) {
-	var exceptions []ElementSchema
+func (e *Exception) FetchElementsFromDB(conn *sql.DB) ([]sqlrog.ElementSchema, error) {
+	var exceptions []sqlrog.ElementSchema
 	exRows, err := conn.Query(`
 		select trim(ex.rdb$exception_name), ex.rdb$exception_number, trim(coalesce(ex.rdb$message, '')), trim(coalesce(ex.rdb$description, ''))
 		from rdb$exceptions ex
@@ -110,10 +110,10 @@ func (e *Exception) FetchElementsFromDB(conn *sql.DB) ([]ElementSchema, error) {
 	return exceptions, nil
 }
 
-func (e *Exception) DiffsOnCreate(schema ElementSchema) []*DiffObject {
+func (e *Exception) DiffsOnCreate(schema sqlrog.ElementSchema) []*sqlrog.DiffObject {
 	return e.BaseElementSchema.DiffsOnCreate(schema)
 }
 
-func (e *Exception) DiffsOnDrop(schema ElementSchema) []*DiffObject {
+func (e *Exception) DiffsOnDrop(schema sqlrog.ElementSchema) []*sqlrog.DiffObject {
 	return e.BaseElementSchema.DiffsOnDrop(schema)
 }

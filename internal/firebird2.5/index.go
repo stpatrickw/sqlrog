@@ -1,9 +1,9 @@
-package mysql
+package fb
 
 import (
 	"database/sql"
 	"fmt"
-	. "github.com/stpatrickw/sqlrog/common"
+	"github.com/stpatrickw/sqlrog/internal/sqlrog"
 	"sort"
 	"strings"
 )
@@ -15,22 +15,25 @@ const (
 	INDEX                = "INDEX"
 	PRIMARY_KEY_PRIORITY = 9
 	FOREIGN_KEY_PRIORITY = 7
-	UNIQUE_PRIORITY      = 8
 	INDEX_PRIORITY       = 8
 )
 
 type Index struct {
-	BaseElementSchema `yaml:"base,omitempty"`
-	Name              string
-	Type              string
-	Algorithm         string
-	Unique            bool
-	TableName         string
-	Fields            map[string]IndexField
-	SourceTable       string
-	SourceFields      map[string]IndexField
-	OnDelete          string
-	OnUpdate          string
+	sqlrog.BaseElementSchema `yaml:"base,omitempty"`
+	Name                     string
+	Type                     string
+	Unique                   bool
+	TableName                string
+	Computed                 bool
+	Expression               string
+	Fields                   map[string]IndexField
+	SourceTable              string
+	SourceFields             map[string]IndexField
+	Comment                  string
+	OnDelete                 string
+	OnUpdate                 string
+	Asc                      bool
+	Active                   bool
 }
 
 type IndexField struct {
@@ -52,12 +55,22 @@ func (i *Index) AlterDefinition(other interface{}, sep string) []string {
 
 func (i *Index) CreateDefinition(sep string) []string {
 	definitions := []string{i.Definition(sep)}
-
+	if !i.Active {
+		definitions = append(definitions, i.ActivityDefinition(sep))
+	}
 	return definitions
 }
 
 func (i *Index) DropDefinition(sep string) []string {
-	return []string{fmt.Sprintf("ALTER TABLE %s DROP %s %s%s", i.TableName, i.Type, i.Name, sep)}
+	return []string{fmt.Sprintf("DROP INDEX %s%s", i.Name, sep)}
+}
+
+func (i *Index) ActivityDefinition(sep string) string {
+	if i.Active {
+		fmt.Sprintf("ALTER INDEX %s ACTIVE%s", i.Name, sep)
+	}
+
+	return fmt.Sprintf("ALTER INDEX %s INACTIVE%s", i.Name, sep)
 }
 
 func (i *Index) Definition(sep string) string {
@@ -65,9 +78,7 @@ func (i *Index) Definition(sep string) string {
 	var definition string
 
 	switch i.Type {
-	case PRIMARY_KEY:
-		definition = fmt.Sprintf("ALTER TABLE %s ADD CONSTRAINT %s (%s)", i.TableName, i.Type, OrderedIndexFields(i.Fields))
-	case UNIQUE:
+	case PRIMARY_KEY, UNIQUE:
 		definition = fmt.Sprintf("ALTER TABLE %s ADD CONSTRAINT %s %s (%s)", i.TableName, i.Name, i.Type, OrderedIndexFields(i.Fields))
 	case FOREIGN_KEY:
 		definition = fmt.Sprintf("ALTER TABLE %s ADD CONSTRAINT %s %s (%s) REFERENCES %s (%s)",
@@ -79,13 +90,23 @@ func (i *Index) Definition(sep string) string {
 			definition += " ON UPDATE " + i.OnUpdate
 		}
 	case INDEX:
-		unique := ""
+		var (
+			unique   string
+			computed string
+		)
+		fieldsDefinition := OrderedIndexFields(i.Fields)
 		if i.Unique {
 			unique = " UNIQUE"
 		}
+		if i.Computed && len(i.Expression) > 1 {
+			computed = " COMPUTED BY"
+			fieldsDefinition = i.Expression
+		}
 		order := ""
-
-		definition = fmt.Sprintf("CREATE%s%s INDEX %s ON %s (%s)", unique, order, i.Name, i.TableName, OrderedIndexFields(i.Fields))
+		if !i.Asc {
+			order = " DESCENDING"
+		}
+		definition = fmt.Sprintf("CREATE%s%s INDEX %s ON %s%s (%s)", unique, order, i.Name, i.TableName, computed, fieldsDefinition)
 	}
 
 	return definition + sep
@@ -110,8 +131,9 @@ func OrderedIndexFields(fields map[string]IndexField) string {
 func (i *Index) Equals(i2 interface{}) bool {
 	other := i.CastType(i2)
 
-	if i.Name != other.Name || i.TableName != other.TableName || i.SourceTable != other.SourceTable ||
-		i.OnDelete != other.OnDelete || i.OnUpdate != other.OnUpdate {
+	if i.Name != other.Name || i.TableName != other.TableName || i.Computed != other.Computed ||
+		i.Expression != other.Expression || i.SourceTable != other.SourceTable || i.Comment != other.Comment ||
+		i.OnDelete != other.OnDelete || i.OnUpdate != other.OnUpdate || i.Asc != other.Asc || i.Active != other.Active {
 		return false
 	}
 
@@ -126,30 +148,41 @@ func (i *Index) Equals(i2 interface{}) bool {
 	return true
 }
 
-func (i *Index) Diff(i2 interface{}) *DiffObject {
+func (i *Index) GetPriorityByType(Type string) int {
+	switch Type {
+	case PRIMARY_KEY:
+		return PRIMARY_KEY_PRIORITY
+	case FOREIGN_KEY:
+		return FOREIGN_KEY_PRIORITY
+	default:
+		return INDEX_PRIORITY
+	}
+}
+
+func (i *Index) Diff(i2 interface{}) *sqlrog.DiffObject {
 	other := i.CastType(i2)
 
 	if !i.Equals(other) {
-		return &DiffObject{
-			State:    DIFF_TYPE_UPDATE,
+		return &sqlrog.DiffObject{
+			State:    sqlrog.DIFF_TYPE_UPDATE,
 			Type:     i.String(),
 			From:     i,
 			To:       other,
-			Priority: i.GetPriorityByType(i.Type, false),
+			Priority: i.GetPriorityByType(i.Type),
 		}
 	}
 
 	return nil
 }
 
-func (i *Index) DiffsOnDrop(schema ElementSchema) []*DiffObject {
-	return []*DiffObject{
+func (i *Index) DiffsOnCreate(schema sqlrog.ElementSchema) []*sqlrog.DiffObject {
+	return []*sqlrog.DiffObject{
 		{
-			State:    DIFF_TYPE_DROP,
+			State:    sqlrog.DIFF_TYPE_CREATE,
 			Type:     i.GetTypeName(),
-			From:     i,
-			To:       nil,
-			Priority: i.GetPriorityByType(i.Type, true),
+			From:     nil,
+			To:       i,
+			Priority: i.GetPriorityByType(i.Type),
 		},
 	}
 }
@@ -191,39 +224,30 @@ func IndexTypes() []string {
 	return []string{INDEX, PRIMARY_KEY, FOREIGN_KEY, UNIQUE}
 }
 
-func (i *Index) GetPriorityByType(Type string, drop bool) int {
-	switch Type {
-	case PRIMARY_KEY:
-		return PRIMARY_KEY_PRIORITY
-	case FOREIGN_KEY:
-		if drop {
-			return FOREIGN_KEY_PRIORITY + 10
-		}
-		return FOREIGN_KEY_PRIORITY
-	case UNIQUE:
-		return UNIQUE_PRIORITY
-	default:
-		return INDEX_PRIORITY
-	}
-}
-
 func (i *Index) FetchIndexesFromDB(conn *sql.DB) (map[string]map[string]map[string]*Index, error) {
 
-	indexQuery := `
-		select i.table_name, i.index_name, i.non_unique, 
-			i.seq_in_index as position, i.column_name, i.index_type, 
-            coalesce(c.constraint_type, 'INDEX'), '', '', 0, '', ''
-        from INFORMATION_SCHEMA.STATISTICS i
-		left join INFORMATION_SCHEMA.TABLE_CONSTRAINTS c on i.index_name = c.constraint_name and i.table_schema = c.constraint_schema
-        WHERE i.table_schema = schema()
-        union all 
-        select c.table_name, c.constraint_name as index_name, 1 as non_unique,
-			k.ordinal_position as position, k.column_name, '' as index_type,
-            c.constraint_type, r.update_rule, r.delete_rule, k.position_in_unique_constraint, k.referenced_table_name, k.referenced_column_name
-        from INFORMATION_SCHEMA.TABLE_CONSTRAINTS c
-        join INFORMATION_SCHEMA.REFERENTIAL_CONSTRAINTS r on r.constraint_schema = c.constraint_schema and r.constraint_name = c.constraint_name
-        join INFORMATION_SCHEMA.KEY_COLUMN_USAGE k on k.constraint_schema = c.constraint_schema and k.constraint_name = c.constraint_name
-        where c.constraint_schema = schema() and c.constraint_type = 'FOREIGN KEY'`
+	indexQuery := `select trim(i.rdb$relation_name), trim(coalesce(i.rdb$index_name, '')),
+            trim(coalesce(i2.rdb$relation_name,'')),  trim(coalesce(s2.rdb$field_name,'')),
+            trim(coalesce(c.rdb$constraint_type, 'INDEX')) as index_type,
+            case i.rdb$segment_count when 0 then 1 else 0 end as index_computed,
+            trim(coalesce(i.rdb$expression_source, '')),
+            trim(coalesce(i.rdb$description, '')),
+            case i.rdb$index_type when 0 then 1 else 0 end as is_asc,
+            case coalesce(i.rdb$index_inactive, 0) when 0 then 1 else 0 end as index_active,
+                trim(coalesce(s.rdb$field_name, '')),
+                coalesce(s.rdb$field_position, 0),
+                   coalesce(s2.rdb$field_position, 0),
+                case when trim(rf.rdb$update_rule) = 'RESTRICT' then '' else trim(coalesce(rf.rdb$update_rule, '')) end,
+                case when trim(rf.rdb$delete_rule) = 'RESTRICT' then '' else trim(coalesce(rf.rdb$delete_rule, '')) end,
+                   coalesce(i.rdb$unique_flag, 0)
+            from rdb$indices i
+            left join rdb$index_segments s on s.rdb$index_name = i.rdb$index_name
+            left join rdb$relation_constraints c on c.rdb$constraint_name = i.rdb$index_name
+            left join rdb$indices i2 on i.rdb$foreign_key = i2.rdb$index_name
+            left join rdb$index_segments s2 on s2.rdb$index_name = i.rdb$foreign_key
+            left join rdb$ref_constraints rf on rf.rdb$constraint_name = i.rdb$index_name
+            WHERE i.rdb$system_flag = 0 
+            ORDER BY i.rdb$index_name`
 	indexRows, err := conn.Query(indexQuery)
 	if err != nil {
 		return nil, err
@@ -231,29 +255,27 @@ func (i *Index) FetchIndexesFromDB(conn *sql.DB) (map[string]map[string]map[stri
 
 	tableIndexes := make(map[string]map[string]map[string]*Index)
 	for indexRows.Next() {
-		var (
-			nonUnique int
-		)
 		tableIndex := Index{Fields: make(map[string]IndexField), SourceFields: make(map[string]IndexField)}
 		indexField := &IndexField{}
 		sourceField := &IndexField{}
 		err := indexRows.Scan(&tableIndex.TableName,
 			&tableIndex.Name,
-			&nonUnique,
-			&indexField.Position,
-			&indexField.Name,
-			&tableIndex.Algorithm,
+			&tableIndex.SourceTable,
+			&sourceField.Name,
 			&tableIndex.Type,
+			&tableIndex.Computed,
+			&tableIndex.Expression,
+			&tableIndex.Comment,
+			&tableIndex.Asc,
+			&tableIndex.Active,
+			&indexField.Name,
+			&indexField.Position,
+			&sourceField.Position,
 			&tableIndex.OnUpdate,
 			&tableIndex.OnDelete,
-			&sourceField.Position,
-			&tableIndex.SourceTable,
-			&sourceField.Name)
+			&tableIndex.Unique)
 		if err != nil {
 			return nil, err
-		}
-		if nonUnique == 0 {
-			tableIndex.Unique = true
 		}
 		if _, ok := tableIndexes[tableIndex.TableName]; !ok {
 			tableIndexes[tableIndex.TableName] = make(map[string]map[string]*Index)
@@ -273,4 +295,8 @@ func (i *Index) FetchIndexesFromDB(conn *sql.DB) (map[string]map[string]map[stri
 	indexRows.Close()
 
 	return tableIndexes, nil
+}
+
+func (i *Index) DiffsOnDrop(schema sqlrog.ElementSchema) []*sqlrog.DiffObject {
+	return i.BaseElementSchema.DiffsOnDrop(schema)
 }

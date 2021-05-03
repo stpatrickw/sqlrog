@@ -3,7 +3,7 @@ package mysql
 import (
 	"fmt"
 	_ "github.com/nakagami/firebirdsql"
-	"github.com/stpatrickw/sqlrog/common"
+	sqlrog "github.com/stpatrickw/sqlrog/internal/sqlrog"
 	"os"
 	"strings"
 	"testing"
@@ -11,9 +11,9 @@ import (
 
 var (
 	myEngine     MysqlEngine
-	sourceSchema common.ElementSchema
-	targetSchema common.ElementSchema
-	sourceConfig common.Config
+	sourceSchema sqlrog.ElementSchema
+	targetSchema sqlrog.ElementSchema
+	sourceConfig sqlrog.Config
 )
 
 func TestMain(m *testing.M) {
@@ -23,11 +23,11 @@ func TestMain(m *testing.M) {
 }
 
 func setUp() {
-	sourceConfig = common.Config{
+	sourceConfig = sqlrog.Config{
 		AppName: "test_db",
 		Engine:  "mysql5.6",
 		AppType: "project",
-		Params: common.ConfigParams{
+		Params: sqlrog.ConfigParams{
 			FileType: "yml",
 		},
 	}
@@ -35,13 +35,13 @@ func setUp() {
 }
 
 func reloadSchemas() {
-	schema, err := myEngine.LoadSchema(&sourceConfig, &common.YamlSchemaReader{})
+	schema, err := myEngine.LoadSchema(&sourceConfig, &sqlrog.YamlSchemaReader{})
 	if err != nil {
 		fmt.Println(err)
 		os.Exit(1)
 	}
 	sourceSchema = schema
-	schema, err = myEngine.LoadSchema(&sourceConfig, &common.YamlSchemaReader{})
+	schema, err = myEngine.LoadSchema(&sourceConfig, &sqlrog.YamlSchemaReader{})
 	if err != nil {
 		fmt.Println(err)
 		os.Exit(1)
@@ -134,7 +134,7 @@ func TestTableDropDiff(t *testing.T) {
 		}
 	}
 	changes := myEngine.SchemaDiff(sourceSchema, targetSchema)
-	if len(changes) == 0 || changes[0].State != common.DIFF_TYPE_DROP {
+	if len(changes) == 0 || changes[0].State != sqlrog.DIFF_TYPE_DROP {
 		t.Errorf("Expected drop table diff is missing for table: %s\n", tableName)
 	}
 }
@@ -146,17 +146,17 @@ func TestTableAlterSQL(t *testing.T) {
 		if typeElem == "table" {
 			table := elements[tableName].(*Table)
 			table.Fields["volume"] = &TableColumn{
-				BaseElementSchema: common.BaseElementSchema{},
+				BaseElementSchema: sqlrog.BaseElementSchema{},
 				Name:              "volume",
 				Type:              "int",
 			}
 		}
 	}
 	changes := myEngine.SchemaDiff(sourceSchema, targetSchema)
-	if len(changes) == 0 || changes[0].State != common.DIFF_TYPE_UPDATE {
+	if len(changes) == 0 || changes[0].State != sqlrog.DIFF_TYPE_UPDATE {
 		t.Errorf("Expected update table diff is missing for table: %s\n", tableName)
 	}
-	sql := changes[0].DiffSql(common.DEFAULT_SQL_SEPARATOR)
+	sql := changes[0].DiffSql(sqlrog.DEFAULT_SQL_SEPARATOR)
 	expectedSQL := "ALTER TABLE engines ADD COLUMN volume int;"
 	if sql[0] != expectedSQL {
 		t.Errorf("Expected update table sql is not equal to real: \n%s\n%s\n", expectedSQL, sql[0])

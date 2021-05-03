@@ -3,7 +3,7 @@ package main
 import (
 	"fmt"
 	"github.com/fatih/color"
-	. "github.com/stpatrickw/sqlrog/common"
+	"github.com/stpatrickw/sqlrog/internal/sqlrog"
 	"sort"
 	"strings"
 
@@ -23,33 +23,33 @@ func init() {
 		Short: "Diff command",
 		Long:  "Comparison functionality",
 		RunE: func(cmd *cobra.Command, args []string) error {
-			SchemerConfig.Load(DefaultConfigFileName)
-			if _, ok := SchemerConfig.Apps[source]; !ok {
+			sqlrog.AppConfig.Load(sqlrog.DefaultConfigFileName)
+			if _, ok := sqlrog.AppConfig.Apps[source]; !ok {
 				return errors.New("Source app is not found")
 			}
-			sourceApp := SchemerConfig.Apps[source]
+			sourceApp := sqlrog.AppConfig.Apps[source]
 
-			if _, ok := SchemerConfig.Apps[target]; !ok {
-				target = SchemerConfig.Apps[source].Params.(Params).GetParam("Source")
-				if _, ok = SchemerConfig.Apps[target]; !ok {
+			if _, ok := sqlrog.AppConfig.Apps[target]; !ok {
+				target = sqlrog.AppConfig.Apps[source].Params.(sqlrog.Params).GetParam("Source")
+				if _, ok = sqlrog.AppConfig.Apps[target]; !ok {
 					return errors.New("Target app is not found")
 				}
 			}
-			targetApp := SchemerConfig.Apps[target]
+			targetApp := sqlrog.AppConfig.Apps[target]
 
 			if sourceApp.Engine != targetApp.Engine {
 				return errors.New("Source and target app engines should be compatible.")
 			}
-			engine := Engines[sourceApp.Engine]
+			engine := sqlrog.Engines[sourceApp.Engine]
 			type chanResult struct {
-				Schema ElementSchema
+				Schema sqlrog.ElementSchema
 				Error  error
 			}
 			sourceChan := make(chan chanResult)
 			targetChan := make(chan chanResult)
 			go func() {
 				fmt.Println("Fetching source schema...")
-				sourceSchema, err := engine.LoadSchema(sourceApp, &YamlSchemaReader{})
+				sourceSchema, err := engine.LoadSchema(sourceApp, &sqlrog.YamlSchemaReader{})
 				sourceChan <- chanResult{
 					Schema: sourceSchema,
 					Error:  err,
@@ -57,7 +57,7 @@ func init() {
 			}()
 			go func() {
 				fmt.Println("Fetching target schema...")
-				targetSchema, err := engine.LoadSchema(targetApp, &YamlSchemaReader{})
+				targetSchema, err := engine.LoadSchema(targetApp, &sqlrog.YamlSchemaReader{})
 				targetChan <- chanResult{
 					Schema: targetSchema,
 					Error:  err,
@@ -91,19 +91,19 @@ func init() {
 					return diffs[i].Priority > diffs[j].Priority
 				})
 				if apply {
-					if err = engine.ApplyDiffs(targetApp, diffs, DEFAULT_SQL_SEPARATOR_WITH_RETURN); err != nil {
+					if err = engine.ApplyDiffs(targetApp, diffs, sqlrog.DEFAULT_SQL_SEPARATOR_WITH_RETURN); err != nil {
 						return err
 					}
 				} else {
 					fmt.Println("Diff SQL:")
 					for _, change := range diffs {
 						switch change.State {
-						case DIFF_TYPE_DROP:
-							red.Printf("%s\n", strings.Join(change.DiffSql(DEFAULT_SQL_SEPARATOR_WITH_RETURN), ""))
-						case DIFF_TYPE_CREATE:
-							green.Printf("%s\n", strings.Join(change.DiffSql(DEFAULT_SQL_SEPARATOR_WITH_RETURN), ""))
-						case DIFF_TYPE_UPDATE:
-							yellow.Printf("%s\n", strings.Join(change.DiffSql(DEFAULT_SQL_SEPARATOR_WITH_RETURN), ""))
+						case sqlrog.DIFF_TYPE_DROP:
+							red.Printf("%s\n", strings.Join(change.DiffSql(sqlrog.DEFAULT_SQL_SEPARATOR_WITH_RETURN), ""))
+						case sqlrog.DIFF_TYPE_CREATE:
+							green.Printf("%s\n", strings.Join(change.DiffSql(sqlrog.DEFAULT_SQL_SEPARATOR_WITH_RETURN), ""))
+						case sqlrog.DIFF_TYPE_UPDATE:
+							yellow.Printf("%s\n", strings.Join(change.DiffSql(sqlrog.DEFAULT_SQL_SEPARATOR_WITH_RETURN), ""))
 						}
 					}
 				}
@@ -121,19 +121,19 @@ func init() {
 	CliCommands = append(CliCommands, diffCmd)
 }
 
-func compareApps(engine Engine, sourceSchema ElementSchema, targetSchema ElementSchema) ([]*DiffObject, error) {
+func compareApps(engine sqlrog.Engine, sourceSchema sqlrog.ElementSchema, targetSchema sqlrog.ElementSchema) ([]*sqlrog.DiffObject, error) {
 	fmt.Println("Comparing schemas...")
 	changes := engine.SchemaDiff(sourceSchema, targetSchema)
 
 	return changes, nil
 }
 
-func applyFilter(filter string, diffs []*DiffObject) []*DiffObject {
+func applyFilter(filter string, diffs []*sqlrog.DiffObject) []*sqlrog.DiffObject {
 	if filter == "" {
 		return diffs
 	}
 	filter = strings.ToUpper(filter)
-	var newDiffs []*DiffObject
+	var newDiffs []*sqlrog.DiffObject
 	for _, diff := range diffs {
 		if (diff.To != nil && strings.Contains(strings.ToUpper(diff.To.GetName()), filter)) ||
 			(diff.From != nil && strings.Contains(strings.ToUpper(diff.From.GetName()), filter)) {

@@ -2,10 +2,11 @@ package main
 
 import (
 	"fmt"
-	"github.com/go-playground/validator/v10"
+	"github.com/go-playground/validator"
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
-	. "github.com/stpatrickw/sqlrog/common"
+	"github.com/stpatrickw/sqlrog/internal/sqlrog"
+	"log"
 	"strings"
 )
 
@@ -15,7 +16,7 @@ var validate *validator.Validate
 
 func init() {
 	validate = validator.New()
-	config := &Config{}
+	config := &sqlrog.Config{}
 	var isDefault bool
 	var (
 		fileName  string
@@ -28,9 +29,9 @@ func init() {
 		Short: "Show apps in config",
 		Long:  "Show applications",
 		RunE: func(cmd *cobra.Command, args []string) error {
-			SchemerConfig.Load(fileName)
+			sqlrog.AppConfig.Load(fileName)
 
-			for _, app := range SchemerConfig.Apps {
+			for _, app := range sqlrog.AppConfig.Apps {
 				fmt.Printf("App: %s, Engine: %s, Type: %s\n", app.GetAppName(), app.GetEngineName(), app.AppType)
 			}
 
@@ -46,32 +47,32 @@ func init() {
 			if config.AppName == "" {
 				return errors.New("App name should be set")
 			}
-			if config.AppType == AppTypeProject {
+			if config.AppType == sqlrog.AppTypeProject {
 				if sourceApp == "" {
 					return errors.New("Source connection app should be set")
 				}
-				SchemerConfig.Load(fileName)
-				if _, ok := SchemerConfig.Apps[sourceApp]; !ok {
+				sqlrog.AppConfig.Load(fileName)
+				if _, ok := sqlrog.AppConfig.Apps[sourceApp]; !ok {
 					return errors.New("Source connection app is not found")
 				}
 				if fileType == "" {
 					fileType = SchemaFileTypeYml
 				}
 
-				var schemaWriter ObjectWriter
+				var schemaWriter sqlrog.ObjectWriter
 				switch fileType {
 				case "yml":
-					schemaWriter = &YamlSchemaWriter{}
+					schemaWriter = &sqlrog.YamlSchemaWriter{}
 				}
 
-				config.Engine = SchemerConfig.Apps[sourceApp].Engine
-				engine := Engines[config.Engine]
-				config.Params = &ConfigParams{
+				config.Engine = sqlrog.AppConfig.Apps[sourceApp].Engine
+				engine := sqlrog.Engines[config.Engine]
+				config.Params = &sqlrog.ConfigParams{
 					Source:   sourceApp,
 					FileType: fileType,
 				}
-				sourceConfig := SchemerConfig.Apps[sourceApp]
-				schema, err := engine.LoadSchema(sourceConfig, &YamlSchemaReader{})
+				sourceConfig := sqlrog.AppConfig.Apps[sourceApp]
+				schema, err := engine.LoadSchema(sourceConfig, &sqlrog.YamlSchemaReader{})
 				if err != nil {
 					return err
 				}
@@ -83,10 +84,10 @@ func init() {
 				if config.Engine == "" {
 					return errors.New("Engine should be set")
 				}
-				if _, ok := Engines[config.Engine]; !ok {
+				if _, ok := sqlrog.Engines[config.Engine]; !ok {
 					return errors.New("Unrecognized Engine")
 				}
-				configParams := Engines[config.Engine].CreateParams().(Params)
+				configParams := sqlrog.Engines[config.Engine].CreateParams().(sqlrog.Params)
 				for _, arg := range args {
 					param := strings.SplitN(arg, "=", 2)
 					if len(param) != 2 {
@@ -110,24 +111,29 @@ func init() {
 	addAppCmd.Flags().StringVarP(&fileType, "filetype", "", "yml", "Project file type")
 	addAppCmd.Flags().StringVarP(&sourceApp, "source", "s", "", "Source connection App")
 	addAppCmd.Flags().BoolVarP(&isDefault, "default", "d", false, "Is database default")
-	addAppCmd.Flags().StringVarP(&fileName, "filename", "f", DefaultConfigFileName, "Config file name")
-	showAppCmd.Flags().StringVarP(&fileName, "filename", "f", DefaultConfigFileName, "Config file name")
+	addAppCmd.Flags().StringVarP(&fileName, "filename", "f", sqlrog.DefaultConfigFileName, "Config file name")
+	showAppCmd.Flags().StringVarP(&fileName, "filename", "f", sqlrog.DefaultConfigFileName, "Config file name")
 
 	CliCommands = append(CliCommands, addAppCmd, showAppCmd)
 }
 
-func addAppToConfig(fileName string, config *Config, isDefault bool) error {
-	SchemerConfig.Load(fileName)
+func addAppToConfig(fileName string, config *sqlrog.Config, isDefault bool) error {
+	sqlrog.AppConfig.Load(fileName)
 
-	for _, appConfig := range SchemerConfig.Apps {
+	for _, appConfig := range sqlrog.AppConfig.Apps {
 		if appConfig.AppName == config.AppName {
 			return errors.New(fmt.Sprintf("App with name '%s' already exists", config.AppName))
 		}
 	}
-	SchemerConfig.Apps[config.GetAppName()] = config
-	if isDefault || len(SchemerConfig.Apps) == 1 {
-		SchemerConfig.DefaultApp = config.AppName
+	sqlrog.AppConfig.Apps[config.GetAppName()] = config
+	if isDefault || len(sqlrog.AppConfig.Apps) == 1 {
+		sqlrog.AppConfig.DefaultApp = config.AppName
 	}
 
-	return SchemerConfig.Save(fileName)
+	if err := sqlrog.AppConfig.Save(fileName); err != nil {
+		return err
+	}
+	log.Printf("New app %s was added to config", config.GetAppName())
+
+	return nil
 }

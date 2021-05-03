@@ -2,21 +2,21 @@ package fb
 
 import (
 	"database/sql"
-	. "github.com/stpatrickw/sqlrog/common"
+	"github.com/stpatrickw/sqlrog/internal/sqlrog"
 )
 
 type TableColumn struct {
-	BaseElementSchema `yaml:"base,omitempty"`
-	Name              string
-	Type              string
-	Domain            string
-	FieldSource       string
-	NotNull           bool
-	Charset           string
-	Collate           string
-	Default           string
-	Comment           string
-	Position          int
+	sqlrog.BaseElementSchema `yaml:"base,omitempty"`
+	Name                     string
+	Type                     string
+	Domain                   string
+	FieldSource              string
+	NotNull                  bool
+	Charset                  string
+	Collate                  string
+	Default                  string
+	Comment                  string
+	Position                 int
 }
 
 func (t *TableColumn) Equals(t2 interface{}) bool {
@@ -27,12 +27,12 @@ func (t *TableColumn) Equals(t2 interface{}) bool {
 		t.Comment == other.Comment && t.Position == other.Position
 }
 
-func (f *TableColumn) Diff(t2 interface{}) *DiffObject {
+func (f *TableColumn) Diff(t2 interface{}) *sqlrog.DiffObject {
 	other := f.CastType(t2)
 
 	if !f.Equals(other) {
-		return &DiffObject{
-			State: DIFF_TYPE_UPDATE,
+		return &sqlrog.DiffObject{
+			State: sqlrog.DIFF_TYPE_UPDATE,
 			Type:  f.GetTypeName(),
 			From:  f,
 			To:    other,

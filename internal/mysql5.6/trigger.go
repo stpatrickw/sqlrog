@@ -4,16 +4,16 @@ import (
 	"bytes"
 	"database/sql"
 	"fmt"
-	. "github.com/stpatrickw/sqlrog/common"
+	"github.com/stpatrickw/sqlrog/internal/sqlrog"
 	"text/template"
 )
 
 type Trigger struct {
-	BaseElementSchema `yaml:"base,omitempty"`
-	Name              string
-	TableName         string
-	TypeName          string
-	Source            string
+	sqlrog.BaseElementSchema `yaml:"base,omitempty"`
+	Name                     string
+	TableName                string
+	TypeName                 string
+	Source                   string
 }
 
 func (t *Trigger) GetTypeName() string {
@@ -57,12 +57,12 @@ func (t *Trigger) Equals(e2 interface{}) bool {
 		t.TableName == other.TableName && t.Source == other.Source
 }
 
-func (t *Trigger) Diff(t2 interface{}) *DiffObject {
+func (t *Trigger) Diff(t2 interface{}) *sqlrog.DiffObject {
 	other := t.CastType(t2)
 
 	if !t.Equals(other) {
-		return &DiffObject{
-			State: DIFF_TYPE_UPDATE,
+		return &sqlrog.DiffObject{
+			State: sqlrog.DIFF_TYPE_UPDATE,
 			Type:  t.GetTypeName(),
 			From:  t,
 			To:    other,
