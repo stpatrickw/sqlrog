@@ -3,12 +3,13 @@ package mysql
 import (
 	"database/sql"
 	"fmt"
-	_ "github.com/go-sql-driver/mysql"
-	"github.com/pkg/errors"
-	"github.com/stpatrickw/sqlrog/internal/sqlrog"
 	"os"
 	"reflect"
 	"sort"
+
+	_ "github.com/go-sql-driver/mysql"
+	"github.com/pkg/errors"
+	"github.com/stpatrickw/sqlrog/internal/sqlrog"
 )
 
 type MysqlEngine struct {
@@ -70,12 +71,12 @@ func (my *MysqlEngine) LoadSchema(config *sqlrog.Config, reader sqlrog.ObjectRea
 	}
 
 	var schemaElements []sqlrog.ElementSchema
-	if config.AppType == sqlrog.AppTypeProject {
-		if _, err := os.Stat("./" + config.AppName); os.IsNotExist(err) {
-			return nil, errors.New(fmt.Sprintf("Folder for Project: %s doesn't exist", config.AppName))
+	if config.AppType == sqlrog.ProjectTypeFile {
+		if _, err := os.Stat("./" + config.ProjectName); os.IsNotExist(err) {
+			return nil, errors.New(fmt.Sprintf("Folder for Project: %s doesn't exist", config.ProjectName))
 		}
 
-		elements, err := my.LoadElementsFromFiles(config.AppName, schema, reader)
+		elements, err := my.LoadElementsFromFiles(config.ProjectName, schema, reader)
 		if err != nil {
 			return nil, err
 		}

@@ -3,28 +3,29 @@ package sqlrog
 import (
 	"errors"
 	"fmt"
-	"gopkg.in/yaml.v2"
 	"io/ioutil"
+	"os"
 	"path/filepath"
 	"reflect"
+
+	"gopkg.in/yaml.v2"
 )
 
 const DefaultConfigFileName = "config.yml"
-const AppTypeProject = "project"
+const ProjectTypeFile = "file"
 
 var Engines map[string]Engine
-var AppConfig *AppsConfig
+var ProjectConfig *ProjectsConfig
 
 func init() {
 	Engines = make(map[string]Engine)
-	AppConfig = &AppsConfig{
-		Apps: make(map[string]*Config),
+	ProjectConfig = &ProjectsConfig{
+		Projects: make(map[string]*Config),
 	}
 }
 
-type AppsConfig struct {
-	Apps       map[string]*Config
-	DefaultApp string `yaml:"default_app"`
+type ProjectsConfig struct {
+	Projects map[string]*Config
 }
 
 type Params interface {
@@ -59,29 +60,34 @@ type Configurable interface {
 }
 
 type Config struct {
-	AppName string      `yaml:"app_name" validate:"required"`
-	Engine  string      `yaml:"engine" validate:"required"`
-	AppType string      `yaml:"type" validate:"required"`
-	Params  interface{} `yaml:"params" validate:"required"`
+	ProjectName string      `yaml:"project_name" validate:"required"`
+	Engine      string      `yaml:"engine" validate:"required"`
+	AppType     string      `yaml:"type" validate:"required"`
+	Params      interface{} `yaml:"params" validate:"required"`
 }
 
 func (conf *Config) GetEngineName() string {
 	return conf.Engine
 }
 func (conf *Config) GetAppName() string {
-	return conf.AppName
+	return conf.ProjectName
 }
 
-func (sc *AppsConfig) Load(fileName string) error {
+func (sc *ProjectsConfig) Load(fileName string) error {
+	if _, err := os.Stat(fileName); os.IsNotExist(err) {
+		if _, err = os.Create(fileName); err != nil {
+			return err
+		}
+	}
 	data, err := ioutil.ReadFile(fileName)
 	if err != nil {
 		return err
 	}
-	err = yaml.Unmarshal(data, &AppConfig)
+	err = yaml.Unmarshal(data, &ProjectConfig)
 	if err != nil {
 		return err
 	}
-	for _, app := range AppConfig.Apps {
+	for _, app := range ProjectConfig.Projects {
 		var params Params
 		if app.AppType == "project" {
 			params = &ConfigParams{}
@@ -101,8 +107,8 @@ func (sc *AppsConfig) Load(fileName string) error {
 	return nil
 }
 
-func (sc *AppsConfig) Save(fileName string) error {
-	d, err := yaml.Marshal(&AppConfig)
+func (sc *ProjectsConfig) Save(fileName string) error {
+	d, err := yaml.Marshal(&ProjectConfig)
 	if err != nil {
 		return err
 	}

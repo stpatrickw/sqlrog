@@ -3,11 +3,12 @@ package fb
 import (
 	"database/sql"
 	"fmt"
+	"os"
+	"reflect"
+
 	_ "github.com/nakagami/firebirdsql"
 	"github.com/pkg/errors"
 	"github.com/stpatrickw/sqlrog/internal/sqlrog"
-	"os"
-	"reflect"
 )
 
 type FirebirdEngine struct {
@@ -69,12 +70,12 @@ func (fb *FirebirdEngine) LoadSchema(config *sqlrog.Config, reader sqlrog.Object
 	}
 
 	var schemaElements []sqlrog.ElementSchema
-	if config.AppType == sqlrog.AppTypeProject {
-		if _, err := os.Stat("./" + config.AppName); os.IsNotExist(err) {
-			return nil, errors.New(fmt.Sprintf("Folder for Project: %s doesn't exist", config.AppName))
+	if config.AppType == sqlrog.ProjectTypeFile {
+		if _, err := os.Stat("./" + config.ProjectName); os.IsNotExist(err) {
+			return nil, errors.New(fmt.Sprintf("Folder for Project: %s doesn't exist", config.ProjectName))
 		}
 
-		elements, err := fb.LoadElementsFromFiles(config.AppName, schema, reader)
+		elements, err := fb.LoadElementsFromFiles(config.ProjectName, schema, reader)
 		if err != nil {
 			return nil, err
 		}

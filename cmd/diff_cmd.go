@@ -1,11 +1,12 @@
 package main
 
 import (
-	"fmt"
-	"github.com/fatih/color"
-	"github.com/stpatrickw/sqlrog/internal/sqlrog"
 	"sort"
 	"strings"
+
+	"github.com/fatih/color"
+
+	"github.com/stpatrickw/sqlrog/internal/sqlrog"
 
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
@@ -13,29 +14,34 @@ import (
 
 func init() {
 	var (
-		source string
-		target string
-		filter string
-		apply  bool
+		fileName string
+		source   string
+		target   string
+		filter   string
+		apply    bool
 	)
 	diffCmd := &cobra.Command{
-		Use:   "diff",
-		Short: "Diff command",
-		Long:  "Comparison functionality",
+		Use:           "diff",
+		Short:         "Diff command",
+		Long:          "Comparison functionality",
+		SilenceUsage:  true,
+		SilenceErrors: true,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			sqlrog.AppConfig.Load(sqlrog.DefaultConfigFileName)
-			if _, ok := sqlrog.AppConfig.Apps[source]; !ok {
+			if err := sqlrog.ProjectConfig.Load(fileName); err != nil {
+				return err
+			}
+			if _, ok := sqlrog.ProjectConfig.Projects[source]; !ok {
 				return errors.New("Source app is not found")
 			}
-			sourceApp := sqlrog.AppConfig.Apps[source]
+			sourceApp := sqlrog.ProjectConfig.Projects[source]
 
-			if _, ok := sqlrog.AppConfig.Apps[target]; !ok {
-				target = sqlrog.AppConfig.Apps[source].Params.(sqlrog.Params).GetParam("Source")
-				if _, ok = sqlrog.AppConfig.Apps[target]; !ok {
+			if _, ok := sqlrog.ProjectConfig.Projects[target]; !ok {
+				target = sqlrog.ProjectConfig.Projects[source].Params.(sqlrog.Params).GetParam("Source")
+				if _, ok = sqlrog.ProjectConfig.Projects[target]; !ok {
 					return errors.New("Target app is not found")
 				}
 			}
-			targetApp := sqlrog.AppConfig.Apps[target]
+			targetApp := sqlrog.ProjectConfig.Projects[target]
 
 			if sourceApp.Engine != targetApp.Engine {
 				return errors.New("Source and target app engines should be compatible.")
@@ -48,7 +54,7 @@ func init() {
 			sourceChan := make(chan chanResult)
 			targetChan := make(chan chanResult)
 			go func() {
-				fmt.Println("Fetching source schema...")
+				sqlrog.Logln("info", "Fetching source schema...")
 				sourceSchema, err := engine.LoadSchema(sourceApp, &sqlrog.YamlSchemaReader{})
 				sourceChan <- chanResult{
 					Schema: sourceSchema,
@@ -56,7 +62,7 @@ func init() {
 				}
 			}()
 			go func() {
-				fmt.Println("Fetching target schema...")
+				sqlrog.Logln("info", "Fetching target schema...")
 				targetSchema, err := engine.LoadSchema(targetApp, &sqlrog.YamlSchemaReader{})
 				targetChan <- chanResult{
 					Schema: targetSchema,
@@ -85,25 +91,25 @@ func init() {
 			diffs = applyFilter(filter, diffs)
 
 			if len(diffs) == 0 {
-				yellow.Println("There is nothing to change")
+				sqlrog.Logln("warn", "There is nothing to change")
 			} else {
 				sort.Slice(diffs, func(i, j int) bool {
 					return diffs[i].Priority > diffs[j].Priority
 				})
 				if apply {
-					if err = engine.ApplyDiffs(targetApp, diffs, sqlrog.DEFAULT_SQL_SEPARATOR_WITH_RETURN); err != nil {
+					if err = engine.ApplyDiffs(targetApp, diffs, sqlrog.DEFAULT_SQL_SEP_WITH_RETURN); err != nil {
 						return err
 					}
 				} else {
-					fmt.Println("Diff SQL:")
+					sqlrog.Logln("info", "Diff SQL:")
 					for _, change := range diffs {
 						switch change.State {
 						case sqlrog.DIFF_TYPE_DROP:
-							red.Printf("%s\n", strings.Join(change.DiffSql(sqlrog.DEFAULT_SQL_SEPARATOR_WITH_RETURN), ""))
+							red.Printf("%s\n", strings.Join(change.DiffSql(sqlrog.DEFAULT_SQL_SEP), ""))
 						case sqlrog.DIFF_TYPE_CREATE:
-							green.Printf("%s\n", strings.Join(change.DiffSql(sqlrog.DEFAULT_SQL_SEPARATOR_WITH_RETURN), ""))
+							green.Printf("%s\n", strings.Join(change.DiffSql(sqlrog.DEFAULT_SQL_SEP), ""))
 						case sqlrog.DIFF_TYPE_UPDATE:
-							yellow.Printf("%s\n", strings.Join(change.DiffSql(sqlrog.DEFAULT_SQL_SEPARATOR_WITH_RETURN), ""))
+							yellow.Printf("%s\n", strings.Join(change.DiffSql(sqlrog.DEFAULT_SQL_SEP), ""))
 						}
 					}
 				}
@@ -114,15 +120,16 @@ func init() {
 	}
 
 	diffCmd.Flags().StringVarP(&filter, "filter", "f", "", "Filter by element name")
-	diffCmd.Flags().StringVarP(&source, "source", "s", "", "Source app")
-	diffCmd.Flags().StringVarP(&target, "target", "t", "", "Target")
+	diffCmd.Flags().StringVarP(&source, "source", "s", "", "Source project")
+	diffCmd.Flags().StringVarP(&target, "target", "t", "", "Target project")
 	diffCmd.Flags().BoolVarP(&apply, "apply", "a", false, "Apply changes for target")
+	diffCmd.Flags().StringVarP(&fileName, "config", "c", sqlrog.DefaultConfigFileName, "Config file name")
 
 	CliCommands = append(CliCommands, diffCmd)
 }
 
 func compareApps(engine sqlrog.Engine, sourceSchema sqlrog.ElementSchema, targetSchema sqlrog.ElementSchema) ([]*sqlrog.DiffObject, error) {
-	fmt.Println("Comparing schemas...")
+	sqlrog.Logln("info", "Comparing schemas...")
 	changes := engine.SchemaDiff(sourceSchema, targetSchema)
 
 	return changes, nil

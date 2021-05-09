@@ -2,11 +2,12 @@ package mysql
 
 import (
 	"fmt"
-	_ "github.com/nakagami/firebirdsql"
-	sqlrog "github.com/stpatrickw/sqlrog/internal/sqlrog"
 	"os"
 	"strings"
 	"testing"
+
+	_ "github.com/nakagami/firebirdsql"
+	"github.com/stpatrickw/sqlrog/internal/sqlrog"
 )
 
 var (
@@ -24,9 +25,9 @@ func TestMain(m *testing.M) {
 
 func setUp() {
 	sourceConfig = sqlrog.Config{
-		AppName: "test_db",
-		Engine:  "mysql5.6",
-		AppType: "project",
+		ProjectName: "test_db",
+		Engine:      "mysql5.6",
+		AppType:     "project",
 		Params: sqlrog.ConfigParams{
 			FileType: "yml",
 		},
@@ -156,7 +157,7 @@ func TestTableAlterSQL(t *testing.T) {
 	if len(changes) == 0 || changes[0].State != sqlrog.DIFF_TYPE_UPDATE {
 		t.Errorf("Expected update table diff is missing for table: %s\n", tableName)
 	}
-	sql := changes[0].DiffSql(sqlrog.DEFAULT_SQL_SEPARATOR)
+	sql := changes[0].DiffSql(sqlrog.DEFAULT_SQL_SEP)
 	expectedSQL := "ALTER TABLE engines ADD COLUMN volume int;"
 	if sql[0] != expectedSQL {
 		t.Errorf("Expected update table sql is not equal to real: \n%s\n%s\n", expectedSQL, sql[0])

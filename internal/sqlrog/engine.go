@@ -2,21 +2,20 @@ package sqlrog
 
 import (
 	"fmt"
-	"github.com/fatih/color"
-	"gopkg.in/yaml.v2"
 	"io/ioutil"
-	"log"
 	"os"
 	"reflect"
 	"strings"
+
+	"gopkg.in/yaml.v2"
 )
 
 const (
 	DIFF_TYPE_DROP = iota + 1
 	DIFF_TYPE_UPDATE
 	DIFF_TYPE_CREATE
-	DEFAULT_SQL_SEPARATOR             = ";"
-	DEFAULT_SQL_SEPARATOR_WITH_RETURN = ";\n"
+	DEFAULT_SQL_SEP             = ";"
+	DEFAULT_SQL_SEP_WITH_RETURN = ";\n"
 )
 
 type Engine interface {
@@ -79,7 +78,7 @@ func (c *CoreEngine) SaveSchemaToFiles(config *Config, schema ElementSchema, wri
 		}
 	}
 
-	log.Printf("Schema saved successfully \n")
+	Logln("info", "Schema saved successfully.")
 
 	return nil
 }
@@ -110,7 +109,7 @@ func (e *CoreEngine) CompareScheme(source interface{}, target interface{}) []*Di
 
 func (e *CoreEngine) ApplyDiffs(config *Config, diffs []*DiffObject, sep string) error {
 	fmt.Println("Applying updates...")
-	if config.AppType == AppTypeProject {
+	if config.AppType == ProjectTypeFile {
 		for _, diff := range diffs {
 			switch diff.State {
 			case DIFF_TYPE_CREATE, DIFF_TYPE_UPDATE:
@@ -126,17 +125,14 @@ func (e *CoreEngine) ApplyDiffs(config *Config, diffs []*DiffObject, sep string)
 			}
 		}
 	} else {
-		green := color.New(color.FgHiGreen)
-		cyan := color.New(color.FgCyan)
-		yellow := color.New(color.FgYellow)
 		for _, diff := range diffs {
 			for _, stmt := range diff.DiffSql(sep) {
-				cyan.Print("Applying: ... \n")
-				yellow.Print(stmt)
+				Logln("info", "Applying: ...")
+				Logln("info", stmt)
 				if err := Engines[config.Engine].ExecuteSQL(config, []string{stmt}); err != nil {
 					return err
 				}
-				green.Printf(" Done\n")
+				Logln("info", "Done\n")
 			}
 		}
 	}
