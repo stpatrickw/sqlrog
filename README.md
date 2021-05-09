@@ -93,9 +93,10 @@ Diff command represent powerful tool that can compare two different projects. Av
 ```
 
 ## Screenshots
-![screenshot](screenshot.png)
+![](screenshot.png)
 
-##Use Cases
+
+## Use Cases
 
 1. There is a need to track database schema under version control system. Two projects should be created: first for 
 local schema in files and second for live database to compare the changes. 
